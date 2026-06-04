@@ -1,10 +1,6 @@
-Here is the **GitHub README.md** file for your ICS Cyber Risk Assessment project:
-
-```markdown
 # ICS Tactical Cyber Risk Assessment
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![IEEE](https://img.shields.io/badge/IEEE-Paper-orange.svg)](https://ieeexplore.ieee.org)
 
 A data-driven tactical cybersecurity risk assessment framework for Industrial Control Systems (ICS) integrating Random Forest ensemble machine learning with the Joint Risk Analysis Methodology (JRAM).
