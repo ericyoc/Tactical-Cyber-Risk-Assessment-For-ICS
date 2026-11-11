@@ -1,160 +1,82 @@
-# ICS Tactical Cyber Risk Assessment
+# Tactical Cyber Risk Assessment for Industrial Control Systems
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![IEEE](https://img.shields.io/badge/IEEE-Paper-orange.svg)](https://ieeexplore.ieee.org)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ericyoc/Tactical-Cyber-Risk-Assessment-For-ICS/blob/main/Tactical_Cyber_Risk_Assessment_For_ICS.ipynb)
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/)
 
-A data-driven tactical cybersecurity risk assessment framework for Industrial Control Systems (ICS) integrating Random Forest ensemble machine learning with the Joint Risk Analysis Methodology (JRAM).
+Analysis code for *Tactical Cyber Risk Assessment for Industrial Control Systems* (Sarah Quemada, Eric Yocam, Varghese Vaidyan), submitted to *Digital Engineering* (Elsevier).
 
 ## Overview
 
-This repository contains the complete implementation of the methodology presented in *"Tactical Cyber Risk Assessment for Industrial Control Systems"* (Quemada, Yocam, & Vaidyan). The framework fuses three open-source datasets to automate risk assessment and produce quantifiable, actionable risk levels for tactical decision-making.
+The framework couples unsupervised anomaly detection on ICS process telemetry with the Joint Risk Analysis Methodology (JRAM):
 
-### Key Features
+- **Detection.** An autoencoder and a gated recurrent unit (GRU) forecaster are trained on normal operation only. For each held-out fold, the detector score, its calibration (isotonic regression), and its alarm threshold (1% false-positive budget) are chosen on a separate validation file.
+- **Likelihood.** The calibrated probability of each 60-s window is binned into the JRAM likelihood categories.
+- **Consequence.** Each window is attributed to a physical process (P1 boiler, P2 turbine, P3 water treatment, P4 HIL simulation). A planner-set base consequence level is raised by one when an alarm occurs on a process whose controller products have a Critical CVE (CVSS ≥ 9.0) in the NVD.
+- **Risk.** Likelihood and consequence are combined in the JRAM risk matrix (Low, Moderate, Significant, High, Extreme).
+- **Evaluation.** Detection and risk are evaluated on held-out attack files, with block-bootstrap confidence intervals and an ablation of each data stream.
 
-- **Multi-modal data fusion** combining ICS telemetry, vulnerability data, and dark web threat intelligence
-- **Random Forest classifier** (50 trees, max depth 10) with baseline comparisons (Decision Tree, Linear SVM)
-- **JRAM integration** mapping probabilities to likelihood categories and consequence levels
-- **Feature importance ranking** identifying critical ICS sensors for prioritization
-- **Publication-ready visualizations** (confusion matrix, ROC curves, risk contour matrix)
+## Data
 
-## Datasets
+| Source | Use | Access |
+|---|---|---|
+| HAI 22.04 | Primary evaluation: 6 normal training files, 4 test files, 58 attack events, 68 non-constant sensors | https://github.com/icsdataset/hai (also on Kaggle) |
+| HAI 23.05 | Replication: 4 normal training files, 2 test files, 52 attack events | https://github.com/icsdataset/hai |
+| NVD CVE API 2.0 | Testbed controller CVEs; 140-CVE ICS keyword sample | https://nvd.nist.gov/developers/vulnerabilities |
+| MITRE ATT&CK for ICS | Technique coverage per asset class (ablation) | https://github.com/mitre-attack/attack-stix-data |
+| Dizzy | Dark-web onion-service records (ablation) | https://github.com/cibr-qcri/dizzy-datasets |
 
-The framework uses three datasets:
+Datasets are not included in this repository. The notebook stores them under `MyDrive/ics_cyber_risk_assessment/datasets/` in Google Drive.
 
-| Dataset | Description | Records |
-|---------|-------------|---------|
-| **HAI 22.04** | ICS testbed telemetry (steam-turbine power generation) | 1.36M rows, 88 sensors |
-| **NVD Vulnerabilities** | ICS-specific CVEs (Siemens, Rockwell, Schneider, ABB, etc.) | 140 CVEs |
-| **Dark Web Threat Intel** | Onion domains from Dizzy dataset | 32,555 domains |
+## Notebook
 
-## Results
+`Tactical_Cyber_Risk_Assessment_For_ICS.ipynb` runs on a Google Colab CPU runtime (seed 42). Its sections map to the manuscript as follows:
 
-| Model | Accuracy | Precision | Recall | F1 |
-|-------|----------|-----------|--------|-----|
-| Random Forest | 0.9931 | 1.0000 | 0.2219 | 0.3633 |
-| Decision Tree | 0.9930 | 1.0000 | 0.2016 | 0.3355 |
-| SVM (Linear) | 0.9922 | 1.0000 | 0.1155 | 0.2072 |
+| Section | Produces |
+|---|---|
+| 1. Data acquisition | HAI datasets in Google Drive |
+| 2. ICS vulnerability sample | 140-CVE severity statistics (Section 5.7) |
+| 3. Dizzy dark-web dataset | Dark-web records (Section 4.3) |
+| 4. Analysis v1 | Dizzy ICS-term check (Section 5.10); NVD cache used by v2 |
+| 5. Analysis v2 | Leakage (Table 9), baselines and DeLong tests (Table 10), assessment time (Section 5.13), ATT&CK coverage (Section 5.10) |
+| 6. v2 follow-up | ATT&CK ablation for the autoencoder (Section 5.10) |
+| 7. Analysis v3 | Selected detector (Table 11, Figure 3) |
+| 8. Corrected CVE layer | Testbed CVEs (Table 14), JRAM risk (Table 16, Figure 5) |
+| 9. Analysis v4 (standalone) | Reproduction of Table 11, sensor importance (Table 13, Figure 4), HAI 23.05 replication (Table 17, Figure 6) |
 
-### Top 10 Most Important Features
+Sections 5–8 run in one session, in order. Section 9 is standalone and takes about 1.5–2 hours on 8 vCPU.
 
-| Feature | Importance |
-|---------|------------|
-| P3_FIT01 (flow transmitter) | 24.4% |
-| P4_ST_PT01 (pressure) | 12.0% |
-| P2_SCO (solenoid control) | 11.3% |
-| P1_FT01Z | 8.6% |
-| P1_LIT01 | 6.2% |
-| P2_SIT01 | 5.5% |
-| P3_PIT01 | 4.0% |
-| P3_LCP01D | 2.6% |
-| P3_LCV01D | 2.6% |
-| P3_LIT01 | 2.6% |
+## Key results
 
-## Repository Structure
+| Result | HAI 22.04 | HAI 23.05 |
+|---|---|---|
+| Random Forest ROC-AUC, random row split vs. held-out files | 0.965 vs. 0.497 | — |
+| Selected detector ROC-AUC (held-out files) | 0.852 ± 0.061 | 0.824 ± 0.189 |
+| Attack events detected | 43 of 58 | 33 of 52 |
+| Median detection latency | 34 s | 23 s |
+| False alarms per hour | 1.41 | 4.01 |
+| JRAM risk ROC-AUC, detection + CVE (95% CI) | 0.765 (0.690–0.839) | 0.760 (0.667–0.845) |
+| Vulnerability-layer effect (95% CI) | +0.005 (+0.001 to +0.011) | +0.006 (+0.001 to +0.013) |
 
-```
-ics-cyber-risk-assessment/
-├── README.md
-├── requirements.txt
-├── ics_risk_assessment.py          # Main implementation
-├── figures/                         # Place figures here manually
-│   ├── feature_importance_hai_22_04.png
-│   ├── confusion_matrix_hai_22_04.png
-│   ├── roc_curves_hai_22_04.png
-│   └── risk_contour.png
-├── results/                         # Generated outputs
-│   ├── model_results.csv
-│   ├── feature_importance.csv
-│   └── random_forest_model.pkl
-└── datasets/                        # Data directory (not included in repo)
-    ├── hai-22.04/
-    ├── vulnerability_data/
-    └── darkweb_data/
-```
-
-## Installation
-
-### Prerequisites
-
-- Python 3.10 or higher
-- Google Colab (recommended) or local environment with 8GB+ RAM
-
-### Setup
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/ericyoc/ics-cyber-risk-assessment.git
-cd ics-cyber-risk-assessment
-```
-
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-### Google Colab Setup (Recommended)
-
-1. Upload `ics_risk_assessment.py` to Google Colab
-2. Mount Google Drive:
-```python
-from google.colab import drive
-drive.mount('/content/drive')
-```
-
-3. Create a Kaggle API token:
-   - Go to [kaggle.com/settings](https://www.kaggle.com/settings) → Account → API → Create New Token
-   - Upload `kaggle.json` to Colab (or add to Secrets as `KAGGLE_KEY`)
-
-## Usage
-
-### Complete Pipeline
-
-Run the main script:
-
-```python
-python ics_risk_assessment.py
-```
-
-### In Google Colab
-
-```python
-# Run the complete pipeline
-!python ics_risk_assessment.py
-
-# Or import the module
-from ics_risk_assessment import ICSRiskAssessor
-
-# Initialize with path to your datasets
-assessor = ICSRiskAssessor(data_path='/content/drive/MyDrive/ics_cyber_risk_assessment/datasets')
-
-# Run full pipeline
-assessor.load_data()
-assessor.train_models()
-assessor.evaluate()
-assessor.generate_figures()
-assessor.jram_assessment()
-```
+ATT&CK for ICS coverage and the Dizzy dark-web data add no discriminative information. The sensors that matter most to the selected detector respond 16–81 s after attack onset, so they act as consequence indicators rather than manipulated points.
 
 ## Outputs
 
-The script generates the following outputs in your Google Drive:
+Results are written to `MyDrive/ics_cyber_risk_assessment/results/` and figures to `MyDrive/ics_cyber_risk_assessment/figures/`. The manuscript figures are:
 
-| Output | Format | Description |
-|--------|--------|-------------|
-| `model_results.csv` | CSV | Accuracy, precision, recall, F1 for all models |
-| `feature_importance.csv` | CSV | Top 10 features with importance percentages |
-| `confusion_matrix.pdf` | PDF | Random Forest confusion matrix |
-| `roc_curves.pdf` | PDF | ROC curves for all models |
-| `feature_importance.pdf` | PDF | Bar chart of top features |
-| `risk_contour.png` | PNG | JRAM risk assessment matrix |
-| `random_forest_model.pkl` | Pickle | Trained model for reuse |
+| Figure | File |
+|---|---|
+| Figure 3 | `figures/revision_v3/roc_pr_selected.png` |
+| Figure 4 | `figures/revision_v4/feature_importance_selected.png` |
+| Figure 5 | `figures/revision_v3/jram_matrix_v3_fixed.png` |
+| Figure 6 | `figures/revision_v4/roc_pr_selected_hai2305.png` |
+
+## Environment
+
+Python 3.13.18, NumPy 2.4.6, pandas 2.2.3, scikit-learn 1.6.1, SciPy 1.16.3, XGBoost 3.4.1, PyTorch 2.14.1 (CPU), Matplotlib. Reported runs used AMD EPYC 7B12, 8 vCPU, 53.5 GB RAM, no GPU.
 
 ## Acknowledgments
 
-- HAI dataset: Shin et al. (2021) - National Security Research Institute, South Korea
-- NVD vulnerability data: National Institute of Standards and Technology
-- Dizzy dark web dataset: cibr-qcri/dizzy-datasets
-
-**Note:** The `datasets/` directory and actual data files are **not** included in the GitHub repository due to size and licensing. Users must download the HAI dataset from Kaggle as described in the README.
+- HAI datasets: Shin et al., National Security Research Institute, South Korea (CC BY-SA 4.0)
+- NVD: National Institute of Standards and Technology
+- MITRE ATT&CK for ICS: The MITRE Corporation
+- Dizzy: Boshmaf et al., Qatar Computing Research Institute
